@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>{% block title %}{% endblock %}</title>
+		<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+		<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.1/css/all.css">
+		
+
+		<link rel="stylesheet" href="{{ url_for('static', filename='FullCalendar.css') }}" />
+  	<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+  	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+  	<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+ 
+ 	 <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+  	<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.min.js"></script>
+  	<script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.4.0/fullcalendar.min.js"></script>
+
+	 
+  	<script>
+	$(document).ready(function() {
+		
+  	 var calendar = $('#calendar').fullCalendar({
+   	 editable:true,
+   	 header:{
+   	  left:'prev,next today',
+  	   center:'title',
+ 	    right:'month,agendaWeek,agendaDay'
+		},
+  	  events: [{% for row in calendar %}{ id : '{{row.id}}', title : '{{row.title}}'+"€", start : '{{row.start_event}}',end : '{{row.end_event}}',   }, {% endfor %}], 
+ 	   selectable:true,
+		displayEventTime : false,
+ 	   selectHelper:true,	
+		defaultDate: localStorage.fullCalendarDefaultDate,
+
+ 	   select: function(start, end, allDay)
+	    {
+   	  var title = prompt("Enter Event Title");
+  	   if(title)
+  	   {
+ 	     var start = $.fullCalendar.formatDate(start, "Y-MM-DD HH:mm:ss");
+ 	     var end = $.fullCalendar.formatDate(end, "Y-MM-DD HH:mm:ss");
+  	    $.ajax({
+  	     url:"/insert",
+  	     type:"POST",
+    	   data:{title:title, start:start, end:end},
+   	    success:function(data)
+    	   {
+         //alert(data)
+   	     alert("Added Successfully");
+   	     window.location.replace("/");
+   	    }
+   	   })
+ 	    }
+  	  },
+   	 editable:true,
+  	  eventResize:function(event)
+	    {
+  	   var start = $.fullCalendar.formatDate(event.start, "Y-MM-DD HH:mm:ss");
+   	  var end = $.fullCalendar.formatDate(event.end, "Y-MM-DD HH:mm:ss");
+  	   var title = event.title;
+	     var id = event.id;
+ 	    $.ajax({
+  	    url:"/update",
+  	    type:"POST",
+	      data:{title:title, start:start, end:end, id:id},
+ 	     success:function(){
+ 	      calendar.fullCalendar('refetchEvents');
+ 	      alert('Event Update');
+ 	     }
+ 	    })
+ 	   },
+      
+   	 eventDrop:function(event)
+    {
+     var start = $.fullCalendar.formatDate(event.start, "Y-MM-DD HH:mm:ss");
+     var end = $.fullCalendar.formatDate(event.end, "Y-MM-DD HH:mm:ss");
+     var title = event.title;
+     var id = event.id;
+     $.ajax({
+      url:"/update",
+      type:"POST",
+      data:{title:title, start:start, end:end, id:id},
+      success:function()
+      {
+       calendar.fullCalendar('refetchEvents');
+       alert("Event Updated");
+      }
+     });
+    },
+  
+    eventClick:function(event)
+    {
+	var option = prompt("Select option: Delete or Update");
+	switch(option)
+	{
+		case "Delete":
+    			if(confirm("Are you sure you want to remove it?"))
+     			{
+      				var id = event.id;
+      				$.ajax({
+       				url:"/ajax_delete",
+       				type:"POST",
+       				data:{id:id},
+       				success:function()
+       			{
+        		calendar.fullCalendar('refetchEvents');
+        		alert("Event Removed");
+				window.location.replace("/");
+       			}
+      			})
+     			}
+				 break;
+
+		case "Update":
+				var title = prompt("Enter Event Title");
+  	   			if(title)
+  	   			{
+ 	     			var id = event.id;
+		  			//var title = event.title;
+  	    			$.ajax({
+      				url:"/update",
+      				type:"POST",
+      				data:{title:title, id:id},
+      				success:function()
+      			{
+       			calendar.fullCalendar('refetchEvents');
+       			alert("Event Updated");
+	   			window.location.replace("/");
+      			}
+     			})  	    
+				}
+				break;
+		default:
+				if(confirm("Option dont exist"))
+				break;
+	}	
+    },
+	viewRender: (function () {
+    var lastViewName;
+    return function (view) {
+        var view = $('#calendar').fullCalendar('getView');
+		localStorage.fullCalendarDefaultDate = view.title;		
+		const myArray = localStorage.fullCalendarDefaultDate.split(" ");
+		var month = moment().month(myArray[0]).format("MM");;
+		var year = myArray[1];
+		
+        $.ajax({
+      	url:"/update_money",
+      	type:"POST",
+      	data:{month:month, year:year},
+      	success:function(data)
+      	{      	 
+			document.getElementById("money").innerHTML = data;
+      	}
+     });
+    }
+	})(),
+	
+
+   });
+   
+  });
+
+
+</script>
+	</head>
+	<body class="loggedin">
+		<nav class="navtop">
+			<div>
+				<h1>DentistaMais</h1>
+                <a href="{{ url_for('home') }}"><i class="fas fa-home"></i>Home</a>
+				<a href="{{ url_for('profile') }}"><i class="fas fa-user-circle"></i>Profile</i></a>
+				<a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i>Logout</a>
+			</div>
+		</nav>
+		<div class="content">
+			{% block content %}{% endblock %}
+		</div>
+	</body>
+</html>
